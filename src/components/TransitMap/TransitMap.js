@@ -1,8 +1,9 @@
 import React, {useRef, useEffect, useState} from 'react';
 import DeckGL from '@deck.gl/react';
-import {GeoJsonLayer} from '@deck.gl/layers';
+import {GeoJsonLayer, IconLayer} from '@deck.gl/layers';
 import {PathStyleExtension} from '@deck.gl/extensions';
-import {StaticMap} from 'react-map-gl';
+import {BASEMAP} from '@deck.gl/carto';
+import {_MapContext as MapContext, NavigationControl, Marker, StaticMap} from 'react-map-gl';
 import {
     Route,
     Segment,
@@ -10,18 +11,10 @@ import {
     Stop,
     Location,
     ArrivalEstimate,
-    DissolvedSegment
+    TransitManager
 } from '../../services/transit/structures';
-import {
-    genRouteMap,
-    genSegmentMap,
-    genVehicleMap,
-    genStopMap
-} from '../../services/transit/endpoints';
-import {
-    dissolveSegmentsMatchingRoutes
-} from '../../services/transit/utils';
 const convert = require('color-convert');
+const polyline = require('@mapbox/polyline');
 
 const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 
@@ -35,297 +28,243 @@ const INITIAL_VIEW_STATE = {
 
 const TransitMap = () => {
 
-    const [routeMap, setRouteMap] = useState(null);
-    const [segmentMap, setSegmentMap] = useState(null);
-    const [routeLayers, setRouteLayers] = useState([]);
+    const [manager, setManager] = useState(new TransitManager());
+    const [initialized, setInitialized] = useState(false);
 
+    const [routeLayer, setRouteLayer] = useState([]);
+    const [vehicleMarkers, setVehicleMarkers] = useState([]);
+    const [stopMarkers, setStopMarkers] = useState([]);
+
+    // initialize manager
     useEffect(() => {
-        genRouteMap().then((map) => {
-            setRouteMap(map);
-        });
-        genSegmentMap().then((map) => {
-            setSegmentMap(map);
-        });
+        (async () => {
+            await manager.initialize();
+            setInitialized(true);
+        })();
     }, []);
 
+    // once initialized, create layers
     useEffect(() => {
-        if (routeMap == null || segmentMap == null) {
+        if (initialized === false) {
             return;
         }
-        setRouteLayers(makeRouteVisuals(routeMap, segmentMap));
-    }, [routeMap, segmentMap]);
+        setRouteLayer(createRouteLayer(manager));
+        setVehicleMarkers(createVehicleMarkers(manager));
+        setStopMarkers(createStopMarkers(manager));
+    }, [initialized]);
 
+    // update vehicle markers regularly
     useEffect(() => {
-        console.log(routeLayers);
-    }, [routeLayers])
+        const interval = setInterval(() => {
+            if (manager.initialized === true) {
+                (async () => {
+                    await manager.updateVehicleData();
+                    setVehicleMarkers(createVehicleMarkers(manager));
+                })();
+            }
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
-        <DeckGL
-            initialViewState={INITIAL_VIEW_STATE}
-            controller={true}
-            layers={routeLayers}
+        <div
+            style={{
+                height: '100vh',
+                width: '100vw',
+                position: 'relative',
+                overflow: 'hidden'
+            }}
         >
-            <StaticMap mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
-        </DeckGL>
+            <DeckGL
+                ContextProvider={MapContext.Provider}
+                initialViewState={INITIAL_VIEW_STATE}
+                controller={true}
+                layers={[routeLayer]}
+            >
+                {stopMarkers}
+                {vehicleMarkers}
+                <StaticMap mapStyle={BASEMAP.POSITRON} />
+            </DeckGL>
+        </div>
     );
 }
 
 /**
- * Loads array of layers for route visuals
- *
- * @param {Map<string,Route>} routeMap route map
- * @param {Map<string,Segment>} segmentMap segment map
- * @return {[PathLayer]} array of layers
+ * Creates layer needed for route visuals
+ * @param manager {TransitManager} manager to pull data from
+ * @param routes {string[] | null} an array of route ids, or null as default to display all
+ * @return {GeoJsonLayer} layer
  */
-const makeRouteVisuals = (routeMap, segmentMap) => {
-    const layers = [];
+const createRouteLayer = (manager, routes = null) => {
+    if (routes == null) routes = manager.getRouteIds();
+    const data = [];
 
-    const dissolvedSegments = dissolveSegmentsMatchingRoutes(routeMap, segmentMap);
-    for (const dissolved of dissolvedSegments) {
-        for (const route of dissolved.routes) {
+    for (const segmentId of manager.getSegmentIds()) {
+        const segment = manager.getSegment(segmentId);
+        const routeIds = manager.getSegmentRoutes(segmentId);
+        // remove routes that we are ignoring
+        for (let i = 0; i < routeIds.length; i++) {
+            if (!routes.includes(routeIds[i])){
+                routeIds.splice(i, 1);
+                i--;
+            }
+        }
+        // create the data
+        for (const routeId of routeIds) {
+            const route = manager.getRoute(routeId);
+
+            // create dash array for layer
             const dashScale = 8;
-            const dashLength = (dissolved.routes.length - dissolved.routes.indexOf(route)) * dashScale;
-            const gapLength = dissolved.routes.indexOf(route) * dashScale;
-            const dashArray = [dashLength, gapLength];
+            const dashLength = (routeIds.length - routeIds.indexOf(routeId)) * dashScale;
+            const gapLength = routeIds.indexOf(routeId) * dashScale;
+            const dashArray = [dashLength, gapLength]
 
-            const layer = new GeoJsonLayer({
-                id: `segments-${dissolved.segments.toString()}-route-${route}`,
-                data: dissolved.data,
-                lineWidthMinPixels: 2,
+            const dataPoint = {
+                type: 'Feature',
+                geometry: polyline.toGeoJSON(segment.polyline),
+                properties: {
+                    lineColor: convert.hex.rgb(route.color),
+                    dashArray: dashArray
+                }
+            }
 
-                getLineWidth: 4,
-                getLineColor: convert.hex.rgb(routeMap.get(route).color),
-
-                getDashArray: dashArray,
-                extensions: [new PathStyleExtension({
-                    dash: true,
-                    highPrecisionDash: true
-                })]
-            });
-
-            layers.push(layer);
+            data.push(dataPoint);
         }
     }
 
-    return layers;
+    // make the layer
+    const layer = new GeoJsonLayer({
+        id: `RouteLayer`,
+        data: data,
+        getLineColor: d => d.properties.lineColor,
+        getDashArray: d => d.properties.dashArray,
+        lineWidthMinPixels: 2,
+        getLineWidth: 4,
+        extensions: [new PathStyleExtension({
+            dash: true,
+            highPrecisionDash: true
+        })]
+    });
+
+    return layer;
 }
 
-//     // components for segment visuals
-//     const [segmentVisuals, setSegmentVisuals] = useState(null);
-//     // components for vehicle visuals
-//     const [vehicleVisuals, setVehicleVisuals] = useState(null);
-//     // components for stop visuals
-//     const [stopVisuals, setStopVisuals] = useState(null);
-//
-//
-//
-//
-//
-//
-//
-//
-//     // will have fields routes segments vehicles stops
-//     const [transitData, setTransitData] = useState(null);
-//     const [routeVisuals, setRouteVisuals] = useState(null);
-//     const [transitVisuals, setTransitVisuals] = useState([]);
-//
-//     // const [routes, setRoutes] = useState(null);
-//     // const [segments, setSegments] = useState(null);
-//     // const [vehicles, setVehicles] = useState(null);
-//     // const [stops, setStops] = useState(null);
-//
-//     useEffect(() => {
-//         (async () => {
-//             const routes = await allRoutes();
-//
-//             const segments = await allSegments();
-//             for (const [key, value] of routes) {
-//                 for (const segment of value.segments) {
-//                     const oldValue = segments.get(segment[0]);
-//                     if (oldValue.colors.includes(value.color)) {
-//                         continue;
-//                     }
-//                     segments.set(segment[0], {
-//                         GeoJSON: oldValue.GeoJSON,
-//                         colors: [...oldValue.colors, value.color]
-//                     });
-//                 }
-//             }
-//
-//             // const vehicles = await allVehicles();
-//             // for (const [key, value] of vehicles) {
-//             //     vehicles.set(key, {
-//             //         location: value.location,
-//             //         route: value.route_id,
-//             //         heading: value.heading,
-//             //         color: routes.get(value.route_id).color
-//             //     });
-//             // }
-//             //
-//             // const stops = await allStops();
-//             //
-//             setTransitData({
-//                 routes: routes,
-//                 segments: segments,
-//                 // vehicles: vehicles,
-//                 // stops: stops
-//             });
-//         })();
-//     }, []);
-//
-//     useEffect(() => {
-//         if (transitData == null) {
-//             return;
-//         }
-//         console.log(transitData);
-//         const visuals = Array.from(transitData.segments).map((entry) => {
-//             console.log(entry);
-//             return (
-//                 <Source
-//                     id={`src-segment-${entry[0]}`}
-//                     type={'geojson'}
-//                     data={{
-//                         type: 'Feature',
-//                         properties: {},
-//                         geometry: entry[1].GeoJSON
-//                     }}
-//                 >
-//                     {entry[1].colors.map((color) => {
-//                         console.log(color);
-//                         const i = entry[1].colors.indexOf(color);
-//                         const dashWidth = 3;
-//                         const intervalWidth = entry[1].colors.length * dashWidth;
-//                         const dasharray = [0, i * dashWidth, dashWidth, intervalWidth - (i * dashWidth) - dashWidth];
-//                         return (
-//                             <Layer
-//                                 id={`lay-segment-${entry[0]}-${color}`}
-//                                 type={'line'}
-//                                 source={`src-segment-${entry[0]}`}
-//                                 layout={{
-//                                     'line-join': 'miter',
-//                                     'line-cap': 'butt'
-//                                 }}
-//                                 paint={{
-//                                     'line-color': `#${color}`,
-//                                     'line-width': 3,
-//                                     'line-dasharray': dasharray
-//                                 }}
-//                             />
-//                         );
-//                     })}
-//                 </Source>
-//             );
-//         });
-//         setTransitVisuals(visuals);
-//     }, [transitData]);
-//
-//     return (
-//         <div id={'TransitMap'}>
-//             <ReactMapGL
-//                 {...viewport}
-//                 onViewportChange={nextViewport => setViewport(nextViewport)}
-//                 mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_ACCESS_TOKEN}
-//             >
-//                 {transitVisuals}
-//             </ReactMapGL>
-//         </div>
-//     );
-//
-//     // const mapContainer = useRef();
-//     // const [lng, setLng] = useState(-78.68);
-//     // const [lat, setLat] = useState(35.78);
-//     // const [zoom, setZoom] = useState(13);
-//     //
-//     // const vehicleMarkers = useRef(new Map());
-//     //
-//     // useEffect(() => {
-//     //     const map = new mapboxgl.Map({
-//     //         container: mapContainer.current,
-//     //         style: 'mapbox://styles/mapbox/streets-v11?optimize=true',
-//     //         center: [lng, lat],
-//     //         zoom: zoom
-//     //     });
-//     //
-//     //     map.on('load', async () => {
-//     //         const segmentMap = await allSegments();
-//     //         for (const [key, value] of segmentMap) {
-//     //             map.addSource(`segment${key}`, {
-//     //                 type: 'geojson',
-//     //                 data: {
-//     //                     type: 'Feature',
-//     //                     properties: {},
-//     //                     geometry: value.GeoJSON
-//     //                 }
-//     //             });
-//     //             for (let i = 0; i < value.colors.length; i++) {
-//     //                 const dashWidth = 3;
-//     //                 const intervalWidth = value.colors.length * dashWidth;
-//     //                 const dasharray = [0, i * dashWidth, dashWidth, intervalWidth - (i * dashWidth) - dashWidth];
-//     //                 map.addLayer({
-//     //                     id: `segment${key}${value.colors[i]}`,
-//     //                     type: 'line',
-//     //                     source: `segment${key}`,
-//     //                     layout: {
-//     //                         'line-join': 'round',
-//     //                         'line-cap': 'round'
-//     //                     },
-//     //                     paint: {
-//     //                         'line-color': `#${value.colors[i]}`,
-//     //                         'line-width': 3,
-//     //                         'line-dasharray': dasharray
-//     //                     }
-//     //                 });
-//     //             }
-//     //         }
-//     //     });
-//     //
-//     //     map.on('load', async () => {
-//     //         const vehicleMap = await allVehicles();
-//     //         for (const [key, value] of vehicleMap) {
-//     //             const marker = new mapboxgl.Marker({
-//     //                 color: `#${value.color}`,
-//     //                 draggable: false,
-//     //                 rotation: value.heading + 180,
-//     //                 rotationAlignment: 'map',
-//     //                 anchor: 'center',
-//     //                 offset: [0, 0]
-//     //             }).setLngLat([value.location.lng, value.location.lat]).addTo(map);
-//     //             vehicleMarkers.current.set(key, marker);
-//     //         }
-//     //     });
-//     //
-//     //     map.on('load', async () => {
-//     //         const stopMap = await allStops();
-//     //         for (const [key, value] of stopMap) {
-//     //             const marker = new mapboxgl.Marker({
-//     //                 scale: 0.3,
-//     //                 color: '#000000',
-//     //                 draggable: false,
-//     //                 rotationAlignment: 'viewport'
-//     //             }).setLngLat([value.location.lng, value.location.lat]).addTo(map);
-//     //         }
-//     //     });
-//     //
-//     //     map.on('busLoad', async () => {
-//     //         const vehicleMap = await allVehicles();
-//     //         for (const [key, value] of vehicleMap) {
-//     //             vehicleMarkers.current.get(key).setLngLat([value.location.lng, value.location.lat]).setRotation(value.heading + 180);
-//     //         }
-//     //     });
-//     //
-//     //     const interval = setInterval(() => map.fire('busLoad'), 5000);
-//     //
-//     //     return () => {
-//     //         clearInterval(interval);
-//     //         map.remove();
-//     //     }
-//     // }, []);
-//
-//     // return (
-//     //     <div className={"c-TransitMap"}>
-//     //         <div className="map-container" ref={mapContainer}/>
-//     //     </div>
-//     // )
-// }
+/**
+ * Creates markers needed for vehicle visuals
+ * @param manager {TransitManager} manager to pull data from
+ * @param routes {string[] | null} an array of route ids, or null as default to display all
+ * @return {Marker[]} markers
+ */
+const createVehicleMarkers = (manager, routes = null) => {
+    if (routes == null) routes = manager.getRouteIds();
+    const markers = [];
+    const vehicleIds = manager.getVehicleIds();
+
+    for (const vehicleId of vehicleIds) {
+        const vehicle = manager.getVehicle(vehicleId);
+        const route = manager.getRoute(vehicle.routeId);
+        if (!routes.includes(route.routeId)) continue;
+
+        const marker = (
+            <Marker
+                key={`vehicle-${vehicleId}`}
+                longitude={vehicle.location.lng}
+                latitude={vehicle.location.lat}
+                offsetTop={-9}
+                offsetLeft={-9}
+            >
+                <div
+                    style={{
+                        transform: `rotate(${(vehicle.heading - 45) % 360}deg)`,
+                        width: `16px`,
+                        height: '16px',
+                        position: 'relative',
+                        borderRadius: '8px',
+                        borderStyle: 'solid',
+                        borderWidth: '1px',
+                        borderColor: "black",
+                        backgroundColor: 'white'
+                    }}
+                >
+                    <svg
+                        style={{
+                            position: 'absolute',
+                            top: '2px',
+                            left: '2px',
+                            width: '12px',
+                            height: '12px'
+                        }}
+                        xmlns="http://www.w3.org/2000/svg" fill={`#${route.color}`}
+                        className="bi bi-cursor-fill" viewBox="0 0 16 16">
+                        <path
+                            d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/>
+                    </svg>
+                </div>
+            </Marker>
+        );
+
+        markers.push(marker);
+    }
+
+    return markers;
+}
+
+/**
+ * Creates markers for stops
+ * @param manager {TransitManager} manager to pull data from
+ * @param routes {string[] | null} array of route ids, or default null for all routes
+ * @return {Marker[]} array of markers
+ */
+const createStopMarkers = (manager, routes = null) => {
+    if (routes == null) routes = manager.getRouteIds();
+    const stopIds = manager.getStopIds();
+    const markers = [];
+
+    for (const stopId of stopIds) {
+        const stop = manager.getStop(stopId);
+        let bg = 'conic-gradient(';
+
+        let i;
+        for (i = 0; i < stop.routes.length; i++) {
+            const routeId = stop.routes[i];
+            if (!routes.includes(routeId)) continue;
+            const route = manager.getRoute(routeId);
+            const color = route.color;
+            const deg = (360 / stop.routes.length) * (i + 1);
+            bg += `#${color} 0 ${deg}deg${i === stop.routes.length - 1 ? ')' : ','}`;
+        }
+        if (i === 0) continue;
+
+        const style = {
+            position: 'absolute',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: `${bg}`,
+            borderStyle: 'solid',
+            borderColor: '#000000',
+            borderWidth: '1px'
+        }
+
+        const marker = (
+            <Marker
+                key={`stop-${stop.stopId}`}
+                longitude={stop.location.lng}
+                latitude={stop.location.lat}
+                offsetTop={-4}
+                offsetLeft={-4}
+            >
+                <div
+                    style={style}
+                />
+            </Marker>
+        );
+
+        markers.push(marker);
+    }
+
+    return markers;
+}
+
 
 export default TransitMap;

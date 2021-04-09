@@ -1,3 +1,227 @@
+import {
+    genRouteMap,
+    genVehicleMap,
+    genStopMap,
+    genSegmentMap
+} from "./endpoints";
+
+/**
+ * A manager class for transit data.
+ */
+class TransitManager {
+    /**
+     * Route map
+     */
+    _routeMap;
+    /**
+     * Segment map
+     */
+    _segmentMap;
+    /**
+     * Vehicle map
+     */
+    _vehicleMap;
+    /**
+     * Stop map
+     */
+    _stopMap;
+    /**
+     * Whether or not the manager is initialized
+     */
+    _initialized = false;
+
+    /**
+     * Class constructor
+     */
+    constructor() {}
+
+    /**
+     * Initializes the manager
+     * @return {Promise<boolean>} true if initialized
+     */
+    async initialize() {
+        this.routeMap = await genRouteMap();
+        this.segmentMap = await genSegmentMap();
+        this.stopMap = await genStopMap();
+        this.vehicleMap = await genVehicleMap();
+        // TODO: deal with api failures
+        this.initialized = true;
+        return this.initialized;
+    }
+
+    /**
+     * Updates vehicle information
+     * @return {Promise<boolean>} true if successful
+     */
+    async updateVehicleData() {
+        this.vehicleMap = await genVehicleMap();
+        // TODO: deal with api failures
+        return true;
+    }
+
+    /**
+     * Gets an array of route ids
+     * @return {string[]} ids
+     */
+    getRouteIds() {
+        return Array.from(this.routeMap.keys());
+    }
+
+    /**
+     * Gets a route object for given id
+     * @param routeId route id
+     * @return {Route} route object
+     */
+    getRoute(routeId) {
+        return this.routeMap.get(routeId);
+    }
+
+    /**
+     * Gets an array of segment ids
+     * @return {string[]} ids
+     */
+    getSegmentIds() {
+        return Array.from(this.segmentMap.keys());
+    }
+
+    /**
+     * Gets a segment object for given ids
+     * @param segmentId segment id
+     * @return {Segment} segment object
+     */
+    getSegment(segmentId) {
+        return this.segmentMap.get(segmentId);
+    }
+
+    /**
+     * Gets an array of vehicle ids
+     * @return {string[]} ids
+     */
+    getVehicleIds() {
+        return Array.from(this.vehicleMap.keys());
+    }
+
+    /**
+     * Gets a vehicle object for given id
+     * @param vehicleId vehicle id
+     * @return {Vehicle} vehicle object
+     */
+    getVehicle(vehicleId) {
+        return this.vehicleMap.get(vehicleId);
+    }
+
+    /**
+     * Gets an array of stop ids
+     * @return {string[]} ids
+     */
+    getStopIds() {
+        return Array.from(this.stopMap.keys());
+    }
+
+    /**
+     * Gets a stop object for given id
+     * @param stopId stop id
+     * @return {Stop} stop object
+     */
+    getStop(stopId) {
+        return this.stopMap.get(stopId);
+    }
+
+    /**
+     * Gets the ids of routes which have a segment
+     * @param segmentId id of segment
+     * @return {string[]} route ids
+     */
+    getSegmentRoutes(segmentId) {
+        const routes = [];
+        for (const routeId of this.getRouteIds()) {
+            if (routes.includes(routeId)) continue;
+            if (this.getRoute(routeId).segments.includes(segmentId)) routes.push(routeId);
+        }
+        return routes;
+    }
+
+    /**
+     * Gets route map
+     * @return {Map<string,Route>} route map
+     */
+    get routeMap() {
+        return this._routeMap;
+    }
+
+    /**
+     * Sets route map
+     * @param {Map<string,Route>} value
+     */
+    set routeMap(value) {
+        this._routeMap = value;
+    }
+
+    /**
+     * Gets segment map
+     * @return {Map<string,Segment>} segment map
+     */
+    get segmentMap() {
+        return this._segmentMap;
+    }
+
+    /**
+     * Sets segment map
+     * @param {Map<string,Segment>} value
+     */
+    set segmentMap(value) {
+        this._segmentMap = value;
+    }
+
+    /**
+     * Gets vehicle map
+     * @return {Map<string,Vehicle>} vehicle map
+     */
+    get vehicleMap() {
+        return this._vehicleMap;
+    }
+
+    /**
+     * Sets vehicle map
+     * @param {Map<string,Vehicle>} value
+     */
+    set vehicleMap(value) {
+        this._vehicleMap = value;
+    }
+
+    /**
+     * Gets stop map
+     * @return {Map<string,Stop>} stop map
+     */
+    get stopMap() {
+        return this._stopMap;
+    }
+
+    /**
+     * Sets stop map
+     * @param {Map<string,Stop>} value
+     */
+    set stopMap(value) {
+        this._stopMap = value;
+    }
+
+    /**
+     * Whether or not the manageris initialized
+     * @return {boolean} true if initialized
+     */
+    get initialized() {
+        return this._initialized;
+    }
+
+    /**
+     * Set if manager is initialized
+     * @param {boolean} value
+     */
+    set initialized(value) {
+        this._initialized = value;
+    }
+}
+
 /**
  * Holds information on a route.
  */
@@ -495,61 +719,6 @@ class ArrivalEstimate {
     }
 }
 
-/**
- * Holds data that will be used when rendering segment visuals.
- */
-class DissolvedSegment {
-    /**
-     * Array of segment IDs dissolved into this.
-     */
-    segments;
-    /**
-     * GeoJSON LineString data for this.
-     */
-    data;
-    /**
-     * Array of route IDs that service this DissolvedSegment
-     */
-    routes;
-
-    /**
-     * Class constructor
-     *
-     * @param {[string]} segments array of segment ids
-     * @param {LineString} data GeoJSON LineString data
-     * @param {[string]} routes array of route ids
-     */
-    constructor(segments, data, routes) {
-        this._segments = segments;
-        this._data = data;
-        this._routes = routes;
-    }
-
-    /**
-     * Gets segments
-     * @return {string[]}
-     */
-    get segments() {
-        return this._segments;
-    }
-
-    /**
-     * Gets data
-     * @return {LineString}
-     */
-    get data() {
-        return this._data;
-    }
-
-    /**
-     * Gets routes
-     * @return {string[]}
-     */
-    get routes() {
-        return this._routes;
-    }
-}
-
 export {
     Route,
     Segment,
@@ -557,5 +726,5 @@ export {
     Stop,
     Location,
     ArrivalEstimate,
-    DissolvedSegment
+    TransitManager
 }

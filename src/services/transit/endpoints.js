@@ -93,6 +93,11 @@ const genVehicleMap = async() => {
 
     const vehicleMap = new Map();
 
+    // if no vehicles are reported
+    if (vehicleData == null) {
+        return vehicleMap;
+    }
+
     for (const el of vehicleData) {
         const location = new Location(
             el['location']['lat'],

@@ -26,13 +26,15 @@ const INITIAL_VIEW_STATE = {
     bearing: 0
 }
 
+const VEHICLE_UPDATE_INTERVAL = 3000;
+
 const TransitMap = () => {
 
     const [manager, setManager] = useState(new TransitManager());
     const [initialized, setInitialized] = useState(false);
 
     const [routeLayer, setRouteLayer] = useState([]);
-    const [vehicleMarkers, setVehicleMarkers] = useState([]);
+    const [vehicleLayer, setVehicleLayer] = useState([]);
     const [stopMarkers, setStopMarkers] = useState([]);
 
     // initialize manager
@@ -49,20 +51,22 @@ const TransitMap = () => {
             return;
         }
         setRouteLayer(createRouteLayer(manager));
-        setVehicleMarkers(createVehicleMarkers(manager));
+        setVehicleLayer(createVehicleLayer(manager));
         setStopMarkers(createStopMarkers(manager));
+        // setVehicleMarkers(createVehicleMarkers(manager));
     }, [initialized]);
 
-    // update vehicle markers regularly
+    // update vehicle layer every so often
     useEffect(() => {
         const interval = setInterval(() => {
             if (manager.initialized === true) {
                 (async () => {
                     await manager.updateVehicleData();
-                    setVehicleMarkers(createVehicleMarkers(manager));
+                    setVehicleLayer(createVehicleLayer(manager));
+                    // setVehicleMarkers(createVehicleMarkers(manager));
                 })();
             }
-        }, 3000);
+        }, VEHICLE_UPDATE_INTERVAL);
         return () => clearInterval(interval);
     }, []);
 
@@ -79,10 +83,12 @@ const TransitMap = () => {
                 ContextProvider={MapContext.Provider}
                 initialViewState={INITIAL_VIEW_STATE}
                 controller={true}
-                layers={[routeLayer]}
+                layers={[
+                    routeLayer,
+                    vehicleLayer
+                ]}
             >
                 {stopMarkers}
-                {vehicleMarkers}
                 <StaticMap mapStyle={BASEMAP.POSITRON} />
             </DeckGL>
         </div>
@@ -150,63 +156,89 @@ const createRouteLayer = (manager, routes = null) => {
 }
 
 /**
- * Creates markers needed for vehicle visuals
+ * Creates IconLayer for visualizing vehicles.
+ *
  * @param manager {TransitManager} manager to pull data from
  * @param routes {string[] | null} an array of route ids, or null as default to display all
- * @return {Marker[]} markers
+ * @return {IconLayer} icon layer
  */
-const createVehicleMarkers = (manager, routes = null) => {
+const createVehicleLayer = (manager, routes = null) => {
     if (routes == null) routes = manager.getRouteIds();
-    const markers = [];
     const vehicleIds = manager.getVehicleIds();
+
+    const data = [];
 
     for (const vehicleId of vehicleIds) {
         const vehicle = manager.getVehicle(vehicleId);
         const route = manager.getRoute(vehicle.routeId);
         if (!routes.includes(route.routeId)) continue;
-
-        const marker = (
-            <Marker
-                key={`vehicle-${vehicleId}`}
-                longitude={vehicle.location.lng}
-                latitude={vehicle.location.lat}
-                offsetTop={-9}
-                offsetLeft={-9}
-            >
-                <div
-                    style={{
-                        transform: `rotate(${(vehicle.heading - 45) % 360}deg)`,
-                        width: `16px`,
-                        height: '16px',
-                        position: 'relative',
-                        borderRadius: '8px',
-                        borderStyle: 'solid',
-                        borderWidth: '1px',
-                        borderColor: "black",
-                        backgroundColor: 'white'
-                    }}
-                >
-                    <svg
-                        style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: '2px',
-                            width: '12px',
-                            height: '12px'
-                        }}
-                        xmlns="http://www.w3.org/2000/svg" fill={`#${route.color}`}
-                        className="bi bi-cursor-fill" viewBox="0 0 16 16">
-                        <path
-                            d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/>
-                    </svg>
-                </div>
-            </Marker>
-        );
-
-        markers.push(marker);
+        const point = {
+            pType: 'point',
+            vehicleId: vehicle.vehicleId,
+            routeId: route.routeId,
+            lat: vehicle.location.lat,
+            lng: vehicle.location.lng,
+            heading: vehicle.heading,
+            icon: {
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/png/play-circle-8x.png',
+                x: 0,
+                y: 0,
+                width: 64,
+                height: 64,
+                mask: true
+            },
+            size: 20,
+            color: convert.hex.rgb(manager.getRoute(route.routeId).color)
+        }
+        const pointBg = {
+            pType: 'pointBg',
+            vehicleId: vehicle.vehicleId,
+            lat: vehicle.location.lat,
+            lng: vehicle.location.lng,
+            icon: {
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/png/media-record-8x.png',
+                x: 0,
+                y: 0,
+                width: 64,
+                height: 64,
+                mask: true
+            },
+            size: 35,
+            color: convert.hex.rgb(manager.getRoute(route.routeId).textColor)
+        }
+        data.push(pointBg, point);
     }
 
-    return markers;
+    // array is sorted so items end up at same index (usually)
+    data.sort((a, b) => {
+        const vRet = a.vehicleId.localeCompare(b.vehicleId);
+        if (vRet !== 0) return vRet;
+        if (a.pType === 'point') return 1;
+        return -1;
+    });
+
+    console.log(data);
+
+    const layer = new IconLayer({
+        id: 'icon-layer',
+        data: data,
+        pickable: true,
+        getIcon: d => d.icon,
+        sizeScale: 1,
+        getPosition: d => [d.lng, d.lat],
+        getSize: d => d.size,
+        getColor: d => d.color,
+
+        billboard: false,
+        getAngle: d => -1 * (d.heading) + 90,
+
+        transitions: {
+            getPosition: VEHICLE_UPDATE_INTERVAL,
+            getAngle: VEHICLE_UPDATE_INTERVAL
+        }
+    });
+
+    return layer;
 }
 
 /**

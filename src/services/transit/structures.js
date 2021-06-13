@@ -2,7 +2,7 @@ import {
     genRouteMap,
     genVehicleMap,
     genStopMap,
-    genSegmentMap
+    genSegmentMap, genArrivalEstimates
 } from "./endpoints";
 
 /**
@@ -26,6 +26,10 @@ class TransitManager {
      */
     _stopMap;
     /**
+     * Arrival estimates
+     */
+    _arrivalEstimates;
+    /**
      * Whether or not the manager is initialized
      */
     _initialized = false;
@@ -44,6 +48,7 @@ class TransitManager {
         this.segmentMap = await genSegmentMap();
         this.stopMap = await genStopMap();
         this.vehicleMap = await genVehicleMap();
+        this.arrivalEstimates = await genArrivalEstimates();
         // TODO: deal with api failures
         this.initialized = true;
         return this.initialized;
@@ -60,10 +65,21 @@ class TransitManager {
     }
 
     /**
+     * Updates arrival estimates
+     * @return {Promise<boolean>} true if successful
+     */
+    async updateArrivalEstimates() {
+        this.arrivalEstimates = await genArrivalEstimates();
+        // TODO: deal with api failures
+        return true;
+    }
+
+    /**
      * Gets an array of route ids
      * @return {string[]} ids
      */
     getRouteIds() {
+        if (!this.initialized) return [];
         return Array.from(this.routeMap.keys());
     }
 
@@ -81,6 +97,7 @@ class TransitManager {
      * @return {string[]} ids
      */
     getSegmentIds() {
+        if (!this.initialized) return [];
         return Array.from(this.segmentMap.keys());
     }
 
@@ -98,6 +115,7 @@ class TransitManager {
      * @return {string[]} ids
      */
     getVehicleIds() {
+        if (!this.initialized) return [];
         return Array.from(this.vehicleMap.keys());
     }
 
@@ -115,6 +133,7 @@ class TransitManager {
      * @return {string[]} ids
      */
     getStopIds() {
+        if (!this.initialized) return [];
         return Array.from(this.stopMap.keys());
     }
 
@@ -219,6 +238,18 @@ class TransitManager {
      */
     set initialized(value) {
         this._initialized = value;
+    }
+
+    /**
+     * Get arrival estimates
+     * @return {[ArrivalEstimate]} arrival estimates
+     */
+    get arrivalEstimates() {
+        return this._arrivalEstimates;
+    }
+
+    set arrivalEstimates(value) {
+        this._arrivalEstimates = value;
     }
 }
 
@@ -680,6 +711,10 @@ class ArrivalEstimate {
      * ID of stop for which this applies.
      */
     stopId;
+    /**
+     * ID of vehicle for which this applies.
+     */
+    vehicleId;
 
     /**
      * Class constructor
@@ -687,11 +722,13 @@ class ArrivalEstimate {
      * @param {string} routeId route id
      * @param {string} arrivalAt arrival time (ISO string)
      * @param {string} stopId stop id
+     * @param {string} vehicleId vehicle id
      */
-    constructor(routeId, arrivalAt, stopId) {
+    constructor(routeId, arrivalAt, stopId, vehicleId) {
         this._routeId = routeId;
         this._arrivalAt = arrivalAt;
         this._stopId = stopId;
+        this._vehicleId = vehicleId;
     }
 
     /**
@@ -716,6 +753,14 @@ class ArrivalEstimate {
      */
     get stopId() {
         return this._stopId;
+    }
+
+    /**
+     * Gets vehicle ID
+     * @returns {string}
+     */
+    get vehicleId() {
+        return this._vehicleId;
     }
 }
 

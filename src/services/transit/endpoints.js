@@ -165,9 +165,38 @@ const genStopMap = async() => {
     return stopMap;
 }
 
+const genArrivalEstimates = async () => {
+    const options = {
+        method: 'GET',
+        url: 'https://transloc-api-1-2.p.rapidapi.com/arrival-estimates.json',
+        params: {agencies: '16'},
+        headers: {
+            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
+            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
+        }
+    };
+
+    const arrivalEstimateData = (await axios.request(options)).data.data;
+    const retArr = [];
+
+    for (const datum of arrivalEstimateData) {
+        for (const arrival of datum['arrivals']) {
+            retArr.push(new ArrivalEstimate(
+                arrival['route_id'],
+                arrival['arrival_at'],
+                datum['stop_id'],
+                arrival['vehicle_id']
+            ));
+        }
+    }
+
+    return retArr;
+}
+
 export {
     genRouteMap,
     genSegmentMap,
     genStopMap,
-    genVehicleMap
+    genVehicleMap,
+    genArrivalEstimates
 }

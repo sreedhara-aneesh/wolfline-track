@@ -1,12 +1,8 @@
 # Wolfline Track
 
----
-
 The point of this project is to make it easier for NC State students to track campus buses to make more informed decisions for their commutes.
 
 ## How it Works
-
----
 
 This system connects to the TransLoc API to pull information on NC State buses and routes in real time. Using this information, visuals are rendered on a map which is displayed to the user.
 
@@ -14,13 +10,9 @@ Future plans include the addition of a routing feature, leveraging the HERE Tran
 
 ## General Usage
 
----
-
 COMING SOON - This is a web application, but it is not ready for use by the general public as of yet.
 
 ## Developer
-
----
 
 ### Quickstart
 

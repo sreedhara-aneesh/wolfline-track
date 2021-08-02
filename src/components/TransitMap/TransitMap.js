@@ -6,13 +6,14 @@ import {
 import {
     TransitManager
 } from '../../services/transit/structures';
+import SettingsDrawer from "../SettingsDrawer/SettingsDrawer";
 import {
     Button,
     Drawer,
     Tag,
     Switch,
     Timeline,
-    Card
+    Card, Collapse
 } from 'antd';
 import {
     MapContainer,
@@ -24,6 +25,9 @@ import {
     divIcon
 } from "leaflet";
 import ReactLeafletDriftMarker from 'react-leaflet-drift-marker';
+import VehicleLayer from "../VehicleLayer/VehicleLayer";
+import RouteLayer from "../RouteLayer/RouteLayer";
+import StopLayer from "../StopLayer/StopLayer";
 
 
 
@@ -78,7 +82,7 @@ const TransitMap = () => {
             console.log("manager initialized");
             setInitialized(true);
         }).catch(() => {
-            console.log("manager could not be initialized")
+            console.log("manager could not be initialized");
         });
 
         const updateInterval = setInterval(() => {
@@ -104,11 +108,13 @@ const TransitMap = () => {
             const newVehicleIds = [];
             const newStopIds = [];
 
+            // push ids of vehicles that service selected routes to above array
             for (const vehicleId of manager.getVehicleIds()) {
                 const vehicle = manager.getVehicle(vehicleId);
                 if (routeIds.includes(vehicle.routeId)) newVehicleIds.push(vehicleId);
             }
 
+            // push ids of stops that service selected routes to above array
             for (const stopId of manager.getStopIds()) {
                 const stop = manager.getStop(stopId);
                 for (const routeId of stop.routes) {
@@ -119,6 +125,7 @@ const TransitMap = () => {
                 }
             }
 
+            // set updated information
             setVehicleIds(newVehicleIds);
             setStopIds(newStopIds);
         }
@@ -135,8 +142,15 @@ const TransitMap = () => {
                 setSettingsOpen={setSettingsOpen}
             />
 
-            <InfoDrawer
+            {/*<InfoDrawer*/}
+            {/*    manager={manager}*/}
+            {/*    selection={selection}*/}
+            {/*    setSelection={setSelection}*/}
+            {/*/>*/}
+
+            <SelectionDrawer
                 manager={manager}
+                routeIds={routeIds}
                 selection={selection}
                 setSelection={setSelection}
             />
@@ -150,6 +164,7 @@ const TransitMap = () => {
                 vehicleIds={vehicleIds}
             />
 
+            {/* button to open settings drawer */}
             <Button
                 style={{
                     position: "absolute",
@@ -159,7 +174,7 @@ const TransitMap = () => {
                 }}
                 onClick={() => {
                     setSettingsOpen(true);
-                    console.log(settingsOpen);
+                    console.log("settings open: " + settingsOpen);
                 }}
                 type={"primary"}
             >
@@ -170,68 +185,103 @@ const TransitMap = () => {
     );
 }
 
+
 /**
- * Settings Drawer component.
+ * Drawer to display information when the user selects a component.
  *
- * @param context {{
- *     manager: TransitManager
- *     routeIds: string[]
- *     setRouteIds: function(string[])
- *     settingsOpen: boolean
- *     setSettingsOpen: function(boolean)
- * }} information to be passed in from parent component
- *
- * @return {JSX.Element} component
+ * @param {Object} props props
+ * @param {TransitManager} manager manager in use
+ * @param {[string]} routeIds ids of selected routes
+ * @param {{
+ *     type: ("vehicle"|"route"|"stop")
+ *     id: string
+ * } | null} selection selection to display info for
+ * @param {function} setSelection function to set selection
+ * @returns {JSX.Element} component
  */
-const SettingsDrawer = (context) => {
+const SelectionDrawer = ({manager, routeIds, selection, setSelection}) => {
+
+    /**
+     * Generates a Collapse for information of upcoming arrivals for a stop.
+     *
+     * @param {Object} args arguments
+     * @param {TransitManager} args.manager manager
+     * @param {string} args.stopId stop id
+     * @param {[string]} args.routeIds ids of selected routes
+     * @returns {JSX.Element} component
+     */
+    const generateStopRouteCollapse = ({manager, stopId, routeIds}) => {
+        const collapsePanels = routeIds.map(routeId => {
+            const route = manager.getRoute(routeId);
+            return (
+                <Collapse.Panel key={`${stopId}-${routeId}`} header={<span><Tag color={`#${route.color}`}>{route.shortName}</Tag>{route.longName}</span>}>
+                    {generateStopRouteCollapsePanelTimeline({
+                        manager: manager,
+                        stopId: stopId,
+                        routeId: routeId
+                    })}
+                </Collapse.Panel>
+            );
+        });
+        return (
+            <Collapse>
+                {collapsePanels}
+            </Collapse>
+        )
+    }
+
+    /**
+     * Generates a Timeline that should be placed within a Collapse Panel.
+     *
+     * @param {Object} args arguments
+     * @param {TransitManager} args.manager manager
+     * @param {string} args.stopId stop id
+     * @param {string} args.routeId route id
+     * @returns {JSX.Element} component
+     */
+    const generateStopRouteCollapsePanelTimeline = ({manager, stopId, routeId}) => {
+        const allEstimates = manager.arrivalEstimates;
+        const estimates = allEstimates.filter(estimate => {
+            return estimate.routeId === routeId && estimate.stopId === stopId;
+        });
+        estimates.sort((a, b) => {
+            return (new Date(a.arrivalAt)).getTime() - (new Date(b.arrivalAt)).getTime();
+        });
+        const timelineItems = estimates.map(estimate => {
+            const date = new Date(estimate.arrivalAt);
+            const vehicle = manager.getVehicle(estimate.vehicleId);
+            return (
+                <Timeline.Item key={`${estimate.vehicleId}-${estimate.stopId}-${estimate.arrivalAt}`}>
+                    <p><b>Vehicle:</b> {vehicle.callName}</p>
+                    <p><b>Arrival:</b> `${date.getHours()}:${date.getMinutes()}</p>
+                </Timeline.Item>
+            );
+        });
+        return (
+            <Timeline>
+                {timelineItems}
+            </Timeline>
+        );
+    }
 
     return (
-        <React.Fragment>
-            <Drawer
-                title={"Settings"}
-                placement={"left"}
-                closable={true}
-                onClose={() => {
-                    context.setSettingsOpen(false);
-                }}
-                visible={context.settingsOpen}
-            >
-                <h3>Route Visibility</h3>
-                {context.manager.getRouteIds().map((routeId) => {
-                    const route = context.manager.getRoute(routeId);
-                    return (
-                        <div
-                            key={`toggle-route-${routeId}`}
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between"
-                            }}
-                        >
-                            <p><Tag color={"#" + route.color}>{route.shortName}</Tag></p>
-                            <p>{route.longName}</p>
-                            <Switch
-                                onChange={(checked, event) => {
-                                    if (checked) {
-                                        const newRouteIds = [...context.routeIds];
-                                        newRouteIds.push(route.routeId);
-                                        context.setRouteIds(newRouteIds);
-                                    } else {
-                                        const newRouteIds = [];
-                                        for (const routeId of context.routeIds) {
-                                            if (routeId === route.routeId) continue;
-                                            newRouteIds.push(routeId);
-                                        }
-                                        context.setRouteIds(newRouteIds);
-                                    }
-                                }}
-                                checked={context.routeIds.includes(route.routeId)}
-                            />
-                        </div>
-                    );
-                })}
-
-            </Drawer>
-        </React.Fragment>
+        <Drawer
+            title={"Selection"}
+            placement={"left"}
+            closable={true}
+            onClose={() => {
+                setSelection(null);
+            }}
+            visible={selection !== null}
+        >
+            {selection?.id === "stop" ? (
+                generateStopRouteCollapse({
+                    manager: manager,
+                    stopId: selection.id,
+                    routeIds: routeIds
+                })
+            ) : null}
+        </Drawer>
     );
 }
 
@@ -351,262 +401,32 @@ const InfoDrawer = (context) => {
  */
 const BaseMap = (context) => {
     return (
-        <React.Fragment>
-            <MapContainer
-                center={[INITIAL_VIEW_STATE.latitude, INITIAL_VIEW_STATE.longitude]}
-                zoom={INITIAL_VIEW_STATE.zoom}
-                style={{height: "100vh"}}
-            >
-                <TileLayer
-                    attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                <TransitLayer
-                    vehicleIds={context.vehicleIds}
-                    stopIds={context.stopIds}
-                    routeIds={context.routeIds}
-                    manager={context.manager}
-                    selection={context.selection}
-                    setSelection={context.setSelection}
-                />
-            </MapContainer>
-        </React.Fragment>
-    );
-}
-
-
-
-
-/**
- * Transit Layer component.
- *
- * @param context {{
- *     manager: TransitManager
- *     vehicleIds: string[]
- *     routeIds: string[]
- *     stopIds: string[]
- *     selection: {
- *         type: ("vehicle"|"route"|"stop")
- *         id: string
- *     } | null
- *     setSelection: function({
- *         type: ("vehicle"|"route"|"stop")
- *         id: string
- *     }) | null
- * }} information to be passed in from parent component
- *
- * @return {JSX.Element} component
- */
-const TransitLayer = (context) => {
-    return (
-        <React.Fragment>
-
-            {context.vehicleIds.map((vehicleId) => (
-                <VehicleElement
-                    key={`vehicle-${vehicleId}`}
-                    manager={context.manager}
-                    vehicleId={vehicleId}
-                    setSelection={context.setSelection}
-                />
-            ))}
-
-            {context.routeIds.map((routeId) => (
-                <RouteElement
-                    key={`route-${routeId}`}
-                    manager={context.manager}
-                    routeIds={context.routeIds}
-                    routeId={routeId}
-                    setSelection={context.setSelection}
-                />
-            ))}
-
-            {context.stopIds.map((stopId) => (
-                <StopElement
-                    key={`stop-${stopId}`}
-                    manager={context.manager}
-                    routeIds={context.routeIds}
-                    stopId={stopId}
-                    setSelection={context.setSelection}
-                />
-            ))}
-
-        </React.Fragment>
-    );
-}
-
-/**
- * Vehicle Element component.
- *
- * @param context {{
- *     manager: TransitManager
- *     vehicleId: string
- *     setSelection: function({
- *         type: ("vehicle"|"route"|"stop")
- *         id: string
- *     }) | null
- * }} information to be passed in from parent component
- *
- * @return component
- */
-const VehicleElement = (context) => {
-
-    const [position, setPosition] = useState([0,0]);
-
-    useEffect(() => {
-        const updatePositionInterval = setInterval(() => {
-            const vehicle = context.manager.getVehicle(context.vehicleId);
-            setPosition([vehicle.location.lat, vehicle.location.lng]);
-        }, VEHICLE_DATA_UPDATE_INTERVAL);
-
-        return () => clearInterval(updatePositionInterval);
-    }, [])
-
-    return (
-        <React.Fragment>
-
-            {(() => {
-                const vehicle = context.manager.getVehicle(context.vehicleId);
-                const route = context.manager.getRoute(vehicle.routeId);
-                return (
-                    <ReactLeafletDriftMarker
-                        position={{
-                            lat: position[0],
-                            lon: position[1]
-                        }}
-                        icon={divIcon({
-                            html: `<div style="border-radius: 50%; background: #${route.color}; border-style: solid; border-color: black; border-width: 1px; width: 15px; height: 15px; font-size: 10px; font-weight: bolder; color: #${route.textColor}">${route.shortName}</div>`
-                        })}
-                        duration={VEHICLE_DATA_UPDATE_INTERVAL}
-                        eventHandlers={{
-                            click: () => context.setSelection({ type: "vehicle", id: context.vehicleId})
-                        }}
-                    />
-                );
-            })()}
-
-        </React.Fragment>
-    );
-}
-
-/**
- * Route Element component
- *
- * @param context {{
- *     manager: TransitManager
- *     routeIds: string[]
- *     routeId: string
- *     setSelection: function({
- *         type: ("vehicle"|"route"|"stop")
- *         id: string
- *     }) | null
- * }} information to be passed in from parent component
- *
- * @return {JSX.Element} component
- */
-const RouteElement = (context) => {
-
-    const [geoFeatures, setGeoFeatures] = useState([]);
-
-    useEffect(() => {
-        const route = context.manager.getRoute(context.routeId);
-        const features = route.segments.map((segmentId) => {
-            const segment = context.manager.getSegment(segmentId);
-            const geometry = polyline.toGeoJSON(segment.polyline);
-            const routeIds = context.routeIds.filter((routeId, i) => {
-                return context.manager.getRoute(routeId).segments.includes(segmentId);
-            });
-
-            const dashLength = 8;
-            const dashesInGroup = routeIds.length;
-            const dashGroupIndex = routeIds.indexOf(context.routeId);
-            const preGap = dashGroupIndex * dashLength;
-            const postGap = dashesInGroup * dashLength - preGap - dashLength;
-
-            const dashArray = [0, preGap, dashLength, postGap];
-
-            return {
-                key: `route-${route.routeId}_segment-${segment.segmentId}_dash-${dashArray.toString()}`,
-                data: geometry,
-                style: {
-                    color: "#" + route.color,
-                    dashArray: dashArray
-                }
-            }
-        });
-
-        setGeoFeatures(features);
-    }, [context.routeIds]);
-
-    return (
-        <React.Fragment>
-            {geoFeatures.map((feature) => (
-                <GeoJSON {...feature} />
-            ))}
-        </React.Fragment>
-    );
-
-}
-
-/**
- * Stop Element component
- *
- * @param context {{
- *     manager: TransitManager
- *     routeIds: string[]
- *     stopId: string
- *     setSelection: function({
- *         type: ("vehicle"|"route"|"stop")
- *         id: string
- *     }) | null
- *
- * }} information to be passed in from parent component
- *
- * @return {JSX.Element} component
- */
-const StopElement = (context) => {
-    return (
-        <React.Fragment>
-            {(() => {
-                const stop = context.manager.getStop(context.stopId);
-                const colors = [];
-
-                for (const routeId of stop.routes) {
-                    if (!context.routeIds.includes(routeId)) continue;
-                    const route = context.manager.getRoute(routeId);
-                    colors.push(route.color);
-                }
-
-                const d = {
-                    stopId: stop.stopId,
-                    name: stop.name,
-                    latitude: stop.location.lat,
-                    longitude: stop.location.lng,
-                    colors: colors
-                }
-
-                let bgGradient = 'conic-gradient(';
-                for (let i = 0; i < colors.length; i++) {
-                    const el = `#${colors[i]} 0 ${(360 / colors.length) * (i + 1)}deg`;
-                    bgGradient += `${el}${i === colors.length - 1 ? ')' : ','}`;
-                }
-
-                return (
-                    <Marker
-                        position={[d.latitude, d.longitude]}
-                        icon={divIcon({
-                            className: "",
-                            html: `<div style="border-radius: 50%; background: ${bgGradient}; border-style: solid; border-color: black; border-width: 1px; width: 8px; height: 8px"/>`
-                        })}
-                        eventHandlers={{
-                            click: (e) => {
-                                context.setSelection({ type: "stop", id: context.stopId });
-                            }
-                        }}
-                    />
-                );
-            })()}
-        </React.Fragment>
+        <MapContainer
+            center={[INITIAL_VIEW_STATE.latitude, INITIAL_VIEW_STATE.longitude]}
+            zoom={INITIAL_VIEW_STATE.zoom}
+            style={{height: "100vh"}}
+        >
+            <TileLayer
+                attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <VehicleLayer
+                manager={context.manager}
+                vehicleIds={context.vehicleIds}
+                setSelection={context.setSelection}
+            />
+            <RouteLayer
+                manager={context.manager}
+                routeIds={context.routeIds}
+                setSelection={context.setSelection}
+            />
+            <StopLayer
+                manager={context.manager}
+                stopIds={context.stopIds}
+                routeIds={context.routeIds}
+                setSelection={context.setSelection}
+            />
+        </MapContainer>
     );
 }
 

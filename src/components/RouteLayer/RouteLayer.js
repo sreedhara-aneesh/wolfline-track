@@ -31,7 +31,7 @@ const RouteLayer = ({manager, routeIds, setSelection}) => {
                 return manager.getRoute(routeId).segments.includes(segmentId);
             });
 
-            const dashLength = 8;
+            const dashLength = 10;
             const dashesInGroup = segRouteIds.length;
             const dashGroupIndex = segRouteIds.indexOf(routeId);
             const preGap = dashGroupIndex * dashLength;
@@ -44,7 +44,9 @@ const RouteLayer = ({manager, routeIds, setSelection}) => {
                 data: geometry,
                 style: {
                     color: "#" + route.color,
-                    dashArray: dashArray
+                    dashArray: dashArray,
+                    weight: 3,
+                    lineCap: 'butt'
                 }
             }
         });

@@ -1,6 +1,7 @@
 import ReactLeafletDriftMarker from "react-leaflet-drift-marker";
 import {divIcon} from "leaflet";
 import React, {useState, useEffect} from "react";
+import './VehicleLayer.css';
 
 /**
  * Layer for BaseMap that displays vehicles.
@@ -53,7 +54,7 @@ const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
                 key={info.vehicleId}
                 position={info.location}
                 icon={divIcon({
-                    html: `<div style="border-radius: 50%; background: ${info.color}; border-style: solid; border-color: black; border-width: 1px; width: 15px; height: 15px; font-size: 10px; font-weight: bolder; color: ${info.textColor}">${info.routeShortName}</div>`
+                    html: `<div style="border-radius: 50%; background: ${info.color}; border-style: solid; border-color: black; border-width: 1px; width: 16px; height: 16px; font-size: 10px; font-weight: bolder; color: ${info.textColor}; display: flex; align-items: center; justify-content: center">${info.routeShortName}</div>`,
                 })}
                 duration={VEHICLE_DATA_UPDATE_INTERVAL}
                 eventHandlers={{

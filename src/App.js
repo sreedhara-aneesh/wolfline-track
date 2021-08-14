@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import './App.css';
 import TransitMap from "./components/TransitMap/TransitMap";
 
@@ -9,7 +8,9 @@ import TransitMap from "./components/TransitMap/TransitMap";
  */
 const App = () => {
     return (
-        <TransitMap/>
+        <div>
+            <TransitMap/>
+        </div>
     );
 }
 

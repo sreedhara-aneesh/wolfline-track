@@ -83,13 +83,12 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
     return (
         <React.Fragment>
             <Drawer
-                title={"Settings"}
+                title={"Route Visibility"}
                 placement={"left"}
                 closable={true}
                 onClose={() => {setSettingsOpen(false)}}
                 visible={settingsOpen}
             >
-                <h3>Route Visibility</h3>
                 {routeVisibility({
                     manager: manager,
                     routeIds: routeIds,

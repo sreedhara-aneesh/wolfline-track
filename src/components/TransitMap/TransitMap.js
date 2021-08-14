@@ -188,7 +188,8 @@ const BaseMap = (context) => {
         >
             <TileLayer
                 attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                url={"https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}.png"}
+                // url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <VehicleLayer
                 manager={context.manager}

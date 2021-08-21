@@ -1,5 +1,5 @@
 import {Collapse, Drawer, Tag, Timeline} from "antd";
-import datefmt from "date-format";
+import datefmt from "dateformat";
 
 /**
  * Drawer to display information when the user selects a component.
@@ -72,7 +72,7 @@ const SelectionDrawer = ({manager, routeIds, selection, setSelection}) => {
             return (
                 <Timeline.Item key={`${estimate.vehicleId}-${estimate.stopId}-${estimate.arrivalAt}`}>
                     <p><b>Vehicle:</b> {vehicle.callName}</p>
-                    <p><b>Arrival:</b> {datefmt('hh:mm', date)}</p>
+                    <p><b>Arrival:</b> {datefmt(date, 'h:MM TT')}</p>
                 </Timeline.Item>
             );
         });
@@ -105,7 +105,7 @@ const SelectionDrawer = ({manager, routeIds, selection, setSelection}) => {
             return (
                 <Timeline.Item key={`${estimate.vehicleId}-${estimate.stopId}-${estimate.arrivalAt}`}>
                     <p><b>Stop:</b> {stop.name}</p>
-                    <p><b>Arrival:</b> {datefmt('hh:mm', date)}</p>
+                    <p><b>Arrival:</b> {datefmt(date, 'h:MM TT')}</p>
                 </Timeline.Item>
             );
         });

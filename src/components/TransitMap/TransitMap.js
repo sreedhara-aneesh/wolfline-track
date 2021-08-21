@@ -18,6 +18,7 @@ import VehicleLayer from "../VehicleLayer/VehicleLayer";
 import RouteLayer from "../RouteLayer/RouteLayer";
 import StopLayer from "../StopLayer/StopLayer";
 import SelectionDrawer from "../SelectionDrawer/SelectionDrawer";
+import UserLayer from "../UserLayer/UserLayer";
 
 /**
  * Transit Map component.
@@ -71,7 +72,13 @@ const TransitMap = () => {
     // upon initialization of transit manager, load in id information
     useEffect(() => {
         if (manager.initialized) {
-            setRouteIds(manager.getRouteIds());
+            // get active routes
+            const initRouteIds = manager.getRouteIds().filter((routeId) => {
+                const route = manager.getRoute(routeId);
+                return route.isActive;
+            });
+            // set active routes as initial selected
+            setRouteIds(initRouteIds);
         }
     }, [initialized]);
 
@@ -207,8 +214,11 @@ const BaseMap = (context) => {
                 routeIds={context.routeIds}
                 setSelection={context.setSelection}
             />
+            <UserLayer />
         </MapContainer>
     );
 }
+
+
 
 export default TransitMap;

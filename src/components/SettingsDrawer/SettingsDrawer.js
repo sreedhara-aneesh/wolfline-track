@@ -50,7 +50,7 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
                         checked={routeIds.includes(route.routeId)}
                     />
                 </div>
-            )
+            );
         });
 
         return components;

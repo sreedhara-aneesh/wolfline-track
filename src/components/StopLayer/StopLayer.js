@@ -59,7 +59,7 @@ const StopLayer = ({manager, stopIds, routeIds, setSelection}) => {
                         position={[data.latitude, data.longitude]}
                         icon={divIcon({
                             className: "",
-                            html: `<div style="border-radius: 50%; background: ${bgGradient}; border-style: solid; border-color: black; border-width: 1px; width: 8px; height: 8px"/>`
+                            html: `<div style="border-radius: 50%; background: ${bgGradient}; border-style: solid; border-color: black; border-width: 2px; width: 10px; height: 10px"/>`
                         })}
                         eventHandlers={{
                             click: (e) => {

@@ -1,4 +1,4 @@
-import {Drawer, Switch, Tag} from "antd";
+import {Drawer, Switch, Tag, Typography} from "antd";
 import React from "react";
 
 /**
@@ -23,7 +23,10 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
      * @param {[string]} args.routeIds selected route ids
      * @param {function} args.setRouteIds function to change selected route ids
      *
-     * @returns {[JSX.Element]} elements with information and toggles
+     * @returns {{
+     *     active: [JSX.Element]
+     *     inactive: [JSX.Element]
+     * }} active and inactive route elements with information and toggles
      */
     const routeVisibility = ({manager, routeIds, setRouteIds}) => {
 
@@ -34,7 +37,7 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
             }
         }
 
-        const components = manager.getRouteIds().map((routeId) => {
+        const makeRouteComponent = (routeId) => {
             const route = manager.getRoute(routeId);
             return (
                 <div key={routeId} style={style.wrapper}>
@@ -51,9 +54,15 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
                     />
                 </div>
             );
-        });
+        }
 
-        return components;
+        const activeComponents = manager.getRouteIds().filter(routeId => manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
+        const inactiveComponents = manager.getRouteIds().filter(routeId => !manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
+
+        return {
+            active: activeComponents,
+            inactive: inactiveComponents
+        };
     }
 
     /**
@@ -89,11 +98,19 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
                 onClose={() => {setSettingsOpen(false)}}
                 visible={settingsOpen}
             >
+                {/* TODO: refactor to not call routeVisibility twice */}
+                <Typography.Title level={5}>Active Routes</Typography.Title>
                 {routeVisibility({
                     manager: manager,
                     routeIds: routeIds,
                     setRouteIds: setRouteIds
-                })}
+                }).active}
+                <Typography.Title level={5}>Inactive Routes</Typography.Title>
+                {routeVisibility({
+                    manager: manager,
+                    routeIds: routeIds,
+                    setRouteIds: setRouteIds
+                }).inactive}
             </Drawer>
         </React.Fragment>
     );

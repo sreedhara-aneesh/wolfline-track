@@ -56,8 +56,8 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
             );
         }
 
-        const activeComponents = manager.getRouteIds().filter(routeId => manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
-        const inactiveComponents = manager.getRouteIds().filter(routeId => !manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
+        const activeComponents = manager.getRouteIds().sort((a,b) => manager.getRoute(a).shortName.localeCompare(manager.getRoute(b).shortName)).filter(routeId => manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
+        const inactiveComponents = manager.getRouteIds().sort((a,b) => manager.getRoute(a).shortName.localeCompare(manager.getRoute(b).shortName)).filter(routeId => !manager.getRoute(routeId).isActive).map(routeId => makeRouteComponent(routeId));
 
         return {
             active: activeComponents,
@@ -97,6 +97,7 @@ const SettingsDrawer = ({manager, routeIds, setRouteIds, settingsOpen, setSettin
                 closable={true}
                 onClose={() => {setSettingsOpen(false)}}
                 visible={settingsOpen}
+                width={300}
             >
                 {/* TODO: refactor to not call routeVisibility twice */}
                 <Typography.Title level={5}>Active Routes</Typography.Title>

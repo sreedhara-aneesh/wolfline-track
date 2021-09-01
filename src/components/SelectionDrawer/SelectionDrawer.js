@@ -1,4 +1,4 @@
-import {Collapse, Drawer, Tag, Timeline} from "antd";
+import {Card, Collapse, Drawer, Tag, Timeline} from "antd";
 import datefmt from "dateformat";
 
 /**
@@ -84,6 +84,30 @@ const SelectionDrawer = ({manager, routeIds, selection, setSelection}) => {
     }
 
     /**
+     *
+     * @param {Object} props props
+     * @param {TransitManager} manager manager
+     * @param {string} vehicleId id of vehicle
+     * @return {JSX.Element} section component
+     */
+    const generateVehicleSection = ({manager, vehicleId}) => {
+        const vehicle = manager.getVehicle(vehicleId);
+        const route = manager.getRoute(vehicle.routeId);
+        return (
+            <div>
+                <Card>
+                    <p><Tag color={`#${route.color}`}>{route.shortName}</Tag>{route.longName}</p>
+                    <p><b>Vehicle:</b> {vehicle.callName}</p>
+                    <p><b>Passenger Load:</b> {Math.round(Number(vehicle.passengerLoad) * 100)}%</p>
+                </Card>
+                <Card>
+                    {generateVehicleTimeline({manager: manager, vehicleId: vehicleId})}
+                </Card>
+            </div>
+        );
+    }
+
+    /**
      * Generates a Timeline of a vehicle's ArrivalEstimates
      *
      * @param {Object} props props
@@ -158,7 +182,7 @@ const SelectionDrawer = ({manager, routeIds, selection, setSelection}) => {
                 })
             ) : null}
             {selection?.type === "vehicle" ? (
-                generateVehicleTimeline({
+                generateVehicleSection({
                     manager: manager,
                     vehicleId: selection.id
                 })

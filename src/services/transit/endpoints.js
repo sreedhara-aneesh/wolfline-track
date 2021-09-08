@@ -165,6 +165,10 @@ const genStopMap = async() => {
     return stopMap;
 }
 
+/**
+ * Generates an array of the latest arrival estimates.
+ * @returns {Promise<[ArrivalEstimate]>}
+ */
 const genArrivalEstimates = async () => {
     const options = {
         method: 'GET',

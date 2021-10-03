@@ -32,7 +32,7 @@ const TransitMap = () => {
      *
      * @type {number}
      */
-    const VEHICLE_DATA_UPDATE_INTERVAL = 3000;
+    const DATA_UPDATE_INTERVAL = 5000;
 
     // transit manager
     const [manager, setManager] = useState(new TransitManager());
@@ -61,10 +61,13 @@ const TransitMap = () => {
 
         const updateInterval = setInterval(() => {
             if (manager.initialized) {
-                manager.updateVehicleData();
-                manager.updateArrivalEstimates();
+                manager.updateData().then(res => {
+                    console.log("Updated data.");
+                }).catch(err => {
+                    console.log(err);
+                });
             }
-        }, VEHICLE_DATA_UPDATE_INTERVAL);
+        }, DATA_UPDATE_INTERVAL);
 
         return () => clearInterval(updateInterval);
     }, []);

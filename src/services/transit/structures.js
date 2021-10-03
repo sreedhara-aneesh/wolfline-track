@@ -44,31 +44,21 @@ class TransitManager {
      * @return {Promise<boolean>} true if initialized
      */
     async initialize() {
-        this.routeMap = await genRouteMap();
-        this.segmentMap = await genSegmentMap();
-        this.stopMap = await genStopMap();
-        this.vehicleMap = await genVehicleMap();
-        this.arrivalEstimates = await genArrivalEstimates();
+        await this.updateData();
         // TODO: deal with api failures
         this.initialized = true;
         return this.initialized;
     }
 
     /**
-     * Updates vehicle information
+     * Updates information in manager
      * @return {Promise<boolean>} true if successful
      */
-    async updateVehicleData() {
+    async updateData() {
+        this.routeMap = await genRouteMap();
+        this.segmentMap = await genSegmentMap();
+        this.stopMap = await genStopMap();
         this.vehicleMap = await genVehicleMap();
-        // TODO: deal with api failures
-        return true;
-    }
-
-    /**
-     * Updates arrival estimates
-     * @return {Promise<boolean>} true if successful
-     */
-    async updateArrivalEstimates() {
         this.arrivalEstimates = await genArrivalEstimates();
         // TODO: deal with api failures
         return true;

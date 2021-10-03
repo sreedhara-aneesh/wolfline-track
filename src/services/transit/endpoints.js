@@ -15,14 +15,9 @@ import {
 const genRouteMap = async () => {
     const options = {
         method: 'GET',
-        url: 'https://transloc-api-1-2.p.rapidapi.com/routes.json',
-        params: {agencies: '16'},
-        headers: {
-            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
-            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
-        }
+        url: `http://${process.env.REACT_APP_BACKEND_HOST}/routeData`
     }
-    const routeData = (await axios.request(options)).data.data['16'];
+    const routeData = (await axios.request(options)).data;
 
     const routeMap = new Map();
 
@@ -53,14 +48,9 @@ const genRouteMap = async () => {
 const genSegmentMap = async() => {
     const options = {
         method: 'GET',
-        url: 'https://transloc-api-1-2.p.rapidapi.com/segments.json',
-        params: {agencies: '16'},
-        headers: {
-            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
-            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
-        }
+        url: `http://${process.env.REACT_APP_BACKEND_HOST}/segmentData`
     };
-    const segmentData = (await axios.request(options)).data.data;
+    const segmentData = (await axios.request(options)).data;
 
     const segmentMap = new Map();
 
@@ -82,14 +72,10 @@ const genSegmentMap = async() => {
 const genVehicleMap = async() => {
     const options = {
         method: 'GET',
-        url: 'https://transloc-api-1-2.p.rapidapi.com/vehicles.json',
-        params: {agencies: '16'},
-        headers: {
-            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
-            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
-        }
+        url: `http://${process.env.REACT_APP_BACKEND_HOST}/vehicleData`
     }
-    const vehicleData = (await axios.request(options)).data.data['16'];
+    const vehicleData = (await axios.request(options)).data;
+    console.log(vehicleData);
 
     const vehicleMap = new Map();
 
@@ -136,14 +122,9 @@ const genVehicleMap = async() => {
 const genStopMap = async() => {
     const options = {
         method: 'GET',
-        url: 'https://transloc-api-1-2.p.rapidapi.com/stops.json',
-        params: {agencies: '16'},
-        headers: {
-            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
-            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
-        }
+        url: `http://${process.env.REACT_APP_BACKEND_HOST}/stopData`
     };
-    const stopData = (await axios.request(options)).data.data;
+    const stopData = (await axios.request(options)).data;
 
     const stopMap = new Map();
 
@@ -172,15 +153,10 @@ const genStopMap = async() => {
 const genArrivalEstimates = async () => {
     const options = {
         method: 'GET',
-        url: 'https://transloc-api-1-2.p.rapidapi.com/arrival-estimates.json',
-        params: {agencies: '16'},
-        headers: {
-            'x-rapidapi-key': process.env.REACT_APP_TRANSLOC_KEY,
-            'x-rapidapi-host': process.env.REACT_APP_TRANSLOC_HOST
-        }
+        url: `http://${process.env.REACT_APP_BACKEND_HOST}/arrivalEstimateData`,
     };
 
-    const arrivalEstimateData = (await axios.request(options)).data.data;
+    const arrivalEstimateData = (await axios.request(options)).data;
     const retArr = [];
 
     for (const datum of arrivalEstimateData) {

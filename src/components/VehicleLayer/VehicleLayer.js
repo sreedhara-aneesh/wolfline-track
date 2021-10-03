@@ -15,7 +15,7 @@ import './VehicleLayer.css';
 const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
     const [displayInfo, setDisplayInfo] = useState([]);
 
-    const VEHICLE_DATA_UPDATE_INTERVAL = 3000;
+    const DATA_UPDATE_INTERVAL = 5000;
 
     useEffect(() => {
         loadDisplayInfo({manager: manager, vehicleIds: vehicleIds});
@@ -24,7 +24,7 @@ const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
     useEffect(() => {
         const updateLoop = setTimeout(() => {
             loadDisplayInfo({manager: manager, vehicleIds: vehicleIds});
-        }, VEHICLE_DATA_UPDATE_INTERVAL);
+        }, DATA_UPDATE_INTERVAL);
         return () => clearTimeout(updateLoop);
     }, [displayInfo]);
 
@@ -49,19 +49,22 @@ const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
     }
 
     const generateVehicleMarkers = ({displayInfo, setSelection}) => {
-        const markers = displayInfo.map(info => (
-            <ReactLeafletDriftMarker
-                key={info.vehicleId}
-                position={info.location}
-                icon={divIcon({
-                    html: `<div style="border-radius: 50%; background: ${info.color}; border-style: solid; border-color: black; border-width: 2px; width: 16px; height: 16px; font-size: 8px; font-weight: bolder; color: ${info.textColor}; display: flex; align-items: center; justify-content: center">${info.routeShortName}</div>`,
-                })}
-                duration={VEHICLE_DATA_UPDATE_INTERVAL}
-                eventHandlers={{
-                    click: () => setSelection({ type: "vehicle", id: info.vehicleId})
-                }}
-            />
-        ));
+        const markers = displayInfo.map(info => {
+            if (info) return (
+                <ReactLeafletDriftMarker
+                    key={info.vehicleId}
+                    position={info.location}
+                    icon={divIcon({
+                        html: `<div style="border-radius: 50%; background: ${info.color}; border-style: solid; border-color: black; border-width: 2px; width: 16px; height: 16px; font-size: 8px; font-weight: bolder; color: ${info.textColor}; display: flex; align-items: center; justify-content: center">${info.routeShortName}</div>`,
+                    })}
+                    duration={DATA_UPDATE_INTERVAL}
+                    eventHandlers={{
+                        click: () => setSelection({ type: "vehicle", id: info.vehicleId})
+                    }}
+                />
+            );
+            return null;
+        });
         return markers;
     }
 

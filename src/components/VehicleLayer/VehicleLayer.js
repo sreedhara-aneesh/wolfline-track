@@ -15,7 +15,7 @@ import './VehicleLayer.css';
 const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
     const [displayInfo, setDisplayInfo] = useState([]);
 
-    const DATA_UPDATE_INTERVAL = 5000;
+    const DATA_UPDATE_INTERVAL = 3000;
 
     useEffect(() => {
         loadDisplayInfo({manager: manager, vehicleIds: vehicleIds});
@@ -31,6 +31,7 @@ const VehicleLayer = ({manager, vehicleIds, setSelection}) => {
     const loadDisplayInfo = ({manager, vehicleIds}) => {
         const newDisplayInfo = vehicleIds.map(vehicleId => {
             const vehicle = manager.getVehicle(vehicleId);
+            if (!vehicle) return null; // attempt to fix error that occurs when vehicle goes offline
             const route = manager.getRoute(vehicle.routeId);
             return {
                 vehicleId: vehicleId,

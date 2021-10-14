@@ -32,7 +32,7 @@ const TransitMap = () => {
      *
      * @type {number}
      */
-    const DATA_UPDATE_INTERVAL = 5000;
+    const DATA_UPDATE_INTERVAL = 3000;
 
     // transit manager
     const [manager, setManager] = useState(new TransitManager());

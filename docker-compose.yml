@@ -1,0 +1,17 @@
+services:
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    ports:
+      - 5000:5000
+    environment:
+      - TRANSLOC_HOST=${TRANSLOC_HOST}
+      - TRANSLOC_KEY=${TRANSLOC_KEY}
+  

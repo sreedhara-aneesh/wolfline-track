@@ -8,7 +8,7 @@ import {
     ArrivalEstimate
 } from './structures';
 
-const backend_url = 'http://localhost:5000'
+const backend_url = process.env.REACT_APP_BACKEND_URL
 
 /**
  * Generates a map of Route objects, routeId => Route

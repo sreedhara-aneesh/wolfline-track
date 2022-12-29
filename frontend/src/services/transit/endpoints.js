@@ -8,6 +8,8 @@ import {
     ArrivalEstimate
 } from './structures';
 
+const backend_url = process.env.REACT_APP_BACKEND_URL
+
 /**
  * Generates a map of Route objects, routeId => Route
  * @returns {Promise<Map<string, Route>>}
@@ -15,7 +17,7 @@ import {
 const genRouteMap = async () => {
     const options = {
         method: 'GET',
-        url: `${process.env.REACT_APP_BACKEND_HOST}/routeData`
+        url: `${backend_url}/routeData`
     }
     const routeData = (await axios.request(options)).data;
 
@@ -48,7 +50,7 @@ const genRouteMap = async () => {
 const genSegmentMap = async() => {
     const options = {
         method: 'GET',
-        url: `${process.env.REACT_APP_BACKEND_HOST}/segmentData`
+        url: `${backend_url}/segmentData`
     };
     const segmentData = (await axios.request(options)).data;
 
@@ -72,7 +74,7 @@ const genSegmentMap = async() => {
 const genVehicleMap = async() => {
     const options = {
         method: 'GET',
-        url: `${process.env.REACT_APP_BACKEND_HOST}/vehicleData`
+        url: `${backend_url}/vehicleData`
     }
     const vehicleData = (await axios.request(options)).data;
     console.log(vehicleData);
@@ -122,7 +124,7 @@ const genVehicleMap = async() => {
 const genStopMap = async() => {
     const options = {
         method: 'GET',
-        url: `${process.env.REACT_APP_BACKEND_HOST}/stopData`
+        url: `${backend_url}/stopData`
     };
     const stopData = (await axios.request(options)).data;
 
@@ -153,7 +155,7 @@ const genStopMap = async() => {
 const genArrivalEstimates = async () => {
     const options = {
         method: 'GET',
-        url: `${process.env.REACT_APP_BACKEND_HOST}/arrivalEstimateData`,
+        url: `${backend_url}/arrivalEstimateData`,
     };
 
     const arrivalEstimateData = (await axios.request(options)).data;

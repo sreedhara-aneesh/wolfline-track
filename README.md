@@ -1,6 +1,11 @@
 # Wolfline Track
 
-This project was made to provide a live tracking system for the Wolfline - North Carolina State University's bus system.
+An interactive real-time map of the NC State Wolfline bus system.
+
+## Images
+
+![Wolfline Track Thumbnail](https://user-images.githubusercontent.com/66135494/219525489-53e2f72a-e78b-457c-9d22-24a30555c299.png)
+*Images framed with [MockUPhone](https://mockuphone.com/).*
 
 ## Initial Configuration
 

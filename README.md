@@ -2,9 +2,9 @@
 
 An interactive real-time map of the NC State Wolfline bus system.
 
-## Images
+## Social Preview
 
-![Wolfline Track Thumbnail](https://user-images.githubusercontent.com/66135494/219525489-53e2f72a-e78b-457c-9d22-24a30555c299.png)
+![Wolfline Track Preview](https://user-images.githubusercontent.com/66135494/219526767-2009706f-f140-4ad2-91fd-7e7116b88f28.png)
 *Images framed with [MockUPhone](https://mockuphone.com/).*
 
 ## Initial Configuration

@@ -4,7 +4,7 @@
 
 ## Initial Configuration
 
-None.
+Copy `.env.example` to `.env`.
 
 ## Installation and Usage
 

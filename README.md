@@ -9,6 +9,10 @@ An interactive real-time map of the NC State Wolfline bus system.
 
 ## Initial Configuration
 
+### Top-Level
+
+Copy `.env.example` to `.env`.
+
 ### Frontend
 
 See `frontend/README.md`.

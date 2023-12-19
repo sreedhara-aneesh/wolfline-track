@@ -2,13 +2,12 @@
 
 > Instructions and paths are given relative to this (`frontend`) folder unless stated otherwise.
 
-## Initial Configuration
+## Installation
 
-Copy `.env.example` to `.env`.
+Copy `.env.example` to `.env` and modify the below settings in `.env` as needed.
+- `REACT_APP_BACKEND_URL`: the URL to the backend.
 
-## Installation and Usage
-
-### Development
+## Usage
 
 Run the following.
 
